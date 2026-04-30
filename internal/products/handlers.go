@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	repo "github.com/AmmanSajid1/go-ecom-api/internal/adapters/postgresql/sqlc"
 	"github.com/AmmanSajid1/go-ecom-api/internal/json"
 )
 
@@ -23,6 +24,10 @@ func (h *handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if products == nil {
+		products = []repo.Product{}
 	}
 
 	json.Write(w, http.StatusOK, products)
