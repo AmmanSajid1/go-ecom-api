@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 
@@ -22,6 +23,21 @@ func main() {
 	// Logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+
+	// Migrations
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		dsn := cfg.db.dsn
+
+		log.Println("Running migrations...")
+		if err := runMigrations(dsn); err != nil {
+			slog.Error("Migrations failed", "err", err)
+			os.Exit(1)
+
+		}
+
+		log.Println("Migrations complete")
+		return
+	}
 
 	// Database
 	conn, err := pgx.Connect(ctx, cfg.db.dsn)

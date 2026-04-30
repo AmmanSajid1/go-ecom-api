@@ -14,8 +14,9 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/api .
+COPY internal/adapters/postgresql/migrations ./internal/adapters/postgresql/migrations
 
 EXPOSE 8080
 
-CMD ["./api"]
+CMD ["sh", "-c", "./api migrate && ./api"]
 
