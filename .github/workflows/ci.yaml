@@ -1,52 +1,37 @@
-name: CI
+name: CI + Build + Push to ECR
 
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ecom
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          go-version: '1.26'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install dependencies
-        run: go mod download
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Install goose
-        run: go install github.com/pressly/goose/v3/cmd/goose@latest
-
-      - name: Run migrations
+      - name: Build Docker image
         run: |
-          goose -dir ./internal/adapters/postgresql/migrations \
-          postgres "host=localhost user=postgres password=postgres dbname=ecom sslmode=disable" up
+          docker build -t ${{ secrets.ECR_REPOSITORY }} .
 
-      - name: Build
-        run: go build ./...
+      - name: Tag image
+        run: |
+          docker tag ${{ secrets.ECR_REPOSITORY }}:latest \
+          ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
 
-      - name: Run tests
-        run: go test ./...
+      - name: Push to ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
